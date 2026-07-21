@@ -42,6 +42,8 @@ const saleRoutes = require('./routes/saleRoutes');
 const futureSaleRoutes = require('./routes/futureSaleRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const receiptRoutes = require('./routes/receiptRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 
 const app = express();
@@ -67,5 +69,7 @@ app.use('/v1/sales', saleRoutes);
 app.use('/v1/future-sales', futureSaleRoutes);
 app.use('/v1/payments', paymentRoutes);
 app.use('/v1/receipts', receiptRoutes);
+app.use('/v1/dashboard', dashboardRoutes);
+app.use('/v1/reports', reportRoutes);
 
 module.exports = app;
