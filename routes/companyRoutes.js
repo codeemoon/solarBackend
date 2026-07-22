@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
 
+const { protect } = require('../middleware/authMiddleware');
+const { checkPermission } = require('../middleware/rbacMiddleware');
+
 const { createCompany, getCompanies, getCompanyById, updateCompany, deleteCompany } = require('../controllers/companyController');
 
-router.post('/', createCompany);
-router.get('/', getCompanies);
-router.get('/:id', getCompanyById);
-router.put('/:id', updateCompany);
-router.delete('/:id', deleteCompany);
+router.post('/', protect, checkPermission("Companies", "create"), createCompany);
+router.get('/', protect, checkPermission("Companies", "read"), getCompanies);
+router.get('/:id', protect, checkPermission("Companies", "read"), getCompanyById);
+router.put('/:id', protect, checkPermission("Companies", "update"), updateCompany);
+router.delete('/:id', protect, checkPermission("Companies", "delete"), deleteCompany);
 
 module.exports = router;
