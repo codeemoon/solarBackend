@@ -26,8 +26,8 @@ const login = async (req, res) => {
 
     const token = jwt.sign(
       { userId: user._id, roleId: user.roleId?._id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
+      process.env.JWT_SECRET || 'solar_super_secret_jwt_key_2026',
+      { expiresIn: process.env.JWT_EXPIRE || '30d' }
     );
 
     const userData = await User.findById(user._id).select('-password').populate('roleId');
@@ -117,8 +117,8 @@ const setupAdmin = async (req, res) => {
 
     const token = jwt.sign(
       { userId: createdUser._id, roleId: role._id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
+      process.env.JWT_SECRET || 'solar_super_secret_jwt_key_2026',
+      { expiresIn: process.env.JWT_EXPIRE || '30d' }
     );
 
     const userData = await User.findById(createdUser._id).select('-password').populate('roleId');
