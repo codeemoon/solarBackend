@@ -49,6 +49,16 @@ const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
+// Always set CORS headers first — even before any error can occur
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(cors({
   origin: '*',
@@ -56,7 +66,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
- //These are all the routes for the API endpoints
+
+// All API routes
 app.use('/v1/companies', companyRoutes);
 app.use('/v1/brands', brandRoutes);
 app.use('/v1/units', unitRoutes);
@@ -77,5 +88,12 @@ app.use('/v1/payments', paymentRoutes);
 app.use('/v1/receipts', receiptRoutes);
 app.use('/v1/dashboard', dashboardRoutes);
 app.use('/v1/reports', reportRoutes);
+
+// Global error handler — always include CORS headers so browser can read the error
+app.use((err, req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  console.error('Unhandled error:', err.message);
+  res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
+});
 
 module.exports = app;
