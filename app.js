@@ -50,7 +50,11 @@ const reportRoutes = require('./routes/reportRoutes');
 const app = express();
 
 
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
  //These are all the routes for the API endpoints
 app.use('/v1/companies', companyRoutes);
