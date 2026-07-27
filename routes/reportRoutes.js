@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { protect } = require('../middleware/authMiddleware');
 const { checkPermission } = require('../middleware/rbacMiddleware');
+const { attachCompany } = require('../middleware/tenantMiddleware');
 
 const { purchaseRegister, salesRegister, futurePurchaseReport, futureSalesReport, paymentRegister, receiptRegister, supplierLedger, customerLedger, outstandingPayable, outstandingReceivable, productWiseReport, brandWiseReport, gstSummary, profitMarginReport } = require('../controllers/reportController');
 

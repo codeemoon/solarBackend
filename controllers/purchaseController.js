@@ -23,8 +23,6 @@ const createPurchase = async (req, res) => {
       const sgstAmount = (gstRate / 2) * quantity * rate / 100;
       const igstAmount = 0;
 
-      const itemTotal = quantity * rate + cgstAmount + sgstAmount;
-
       subtotal += quantity * rate;
       totalCgst += cgstAmount;
       totalSgst += sgstAmount;
@@ -44,7 +42,8 @@ const createPurchase = async (req, res) => {
       igst: totalIgst,
       totalAmount,
       status: status || 'pending',
-      notes
+      notes,
+      companyId: req.user.companyId
     });
 
     await purchase.save();
@@ -59,12 +58,13 @@ const createPurchase = async (req, res) => {
       cgstAmount: (item.gstRate / 2) * item.quantity * item.rate / 100,
       sgstAmount: (item.gstRate / 2) * item.quantity * item.rate / 100,
       igstAmount: 0,
-      totalAmount: item.quantity * item.rate + (item.gstRate / 2) * item.quantity * item.rate / 100 + (item.gstRate / 2) * item.quantity * item.rate / 100
+      totalAmount: item.quantity * item.rate + (item.gstRate / 2) * item.quantity * item.rate / 100 + (item.gstRate / 2) * item.quantity * item.rate / 100,
+      companyId: req.user.companyId
     }));
 
     await PurchaseDetail.insertMany(purchaseDetails);
 
-    const savedPurchase = await Purchase.findById(purchase._id).select('-__v');
+    const savedPurchase = await Purchase.findOne({ _id: purchase._id, companyId: req.user.companyId }).select('-__v');
 
     res.status(201).json({
       success: true,
@@ -93,9 +93,10 @@ const getPurchases = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
 
-    const filter = search ? {
-      purchaseNumber: { $regex: search, $options: 'i' }
-    } : {};
+    const filter = { companyId: req.user.companyId };
+    if (search) {
+      filter.purchaseNumber = { $regex: search, $options: 'i' };
+    }
 
     const purchases = await Purchase.find(filter)
       .populate('supplierId')
@@ -122,7 +123,7 @@ const getPurchases = async (req, res) => {
 
 const getPurchaseById = async (req, res) => {
   try {
-    const purchase = await Purchase.findById(req.params.id).populate('supplierId');
+    const purchase = await Purchase.findOne({ _id: req.params.id, companyId: req.user.companyId }).populate('supplierId');
     
     if (!purchase) {
       return res.status(404).json({
@@ -131,7 +132,7 @@ const getPurchaseById = async (req, res) => {
       });
     }
 
-    const details = await PurchaseDetail.find({ purchaseId: req.params.id })
+    const details = await PurchaseDetail.find({ purchaseId: req.params.id, companyId: req.user.companyId })
       .populate('itemId')
       .populate('unitId');
 
@@ -154,8 +155,8 @@ const updatePurchase = async (req, res) => {
   try {
     const { supplierId, date, dueDate, notes, status } = req.body;
     
-    const purchase = await Purchase.findByIdAndUpdate(
-      req.params.id,
+    const purchase = await Purchase.findOneAndUpdate(
+      { _id: req.params.id, companyId: req.user.companyId },
       { supplierId, date, dueDate, notes, status },
       { new: true, runValidators: true }
     ).populate('supplierId');
@@ -182,7 +183,7 @@ const updatePurchase = async (req, res) => {
 
 const deletePurchase = async (req, res) => {
   try {
-    const purchase = await Purchase.findById(req.params.id);
+    const purchase = await Purchase.findOneAndDelete({ _id: req.params.id, companyId: req.user.companyId });
     
     if (!purchase) {
       return res.status(404).json({
@@ -191,8 +192,7 @@ const deletePurchase = async (req, res) => {
       });
     }
     
-    await PurchaseDetail.deleteMany({ purchaseId: req.params.id });
-    await purchase.deleteOne();
+    await PurchaseDetail.deleteMany({ purchaseId: req.params.id, companyId: req.user.companyId });
     
     res.status(200).json({
       success: true,

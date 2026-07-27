@@ -44,6 +44,10 @@ const purchaseSchema = new mongoose.Schema({
   },
   notes: {
     type: String
+  },
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company'
   }
 }, {
   timestamps: true

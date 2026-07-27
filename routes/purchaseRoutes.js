@@ -3,13 +3,14 @@ const router = express.Router();
 
 const { protect } = require('../middleware/authMiddleware');
 const { checkPermission } = require('../middleware/rbacMiddleware');
+const { attachCompany } = require('../middleware/tenantMiddleware');
 
 const { createPurchase, getPurchases, getPurchaseById, updatePurchase, deletePurchase } = require('../controllers/purchaseController');
 
-router.post('/', protect, checkPermission("Purchases", "create"), createPurchase);
+router.post('/', protect, checkPermission("Purchases", "create"), attachCompany, createPurchase);
 router.get('/', protect, checkPermission("Purchases", "read"), getPurchases);
 router.get('/:id', protect, checkPermission("Purchases", "read"), getPurchaseById);
-router.put('/:id', protect, checkPermission("Purchases", "update"), updatePurchase);
+router.put('/:id', protect, checkPermission("Purchases", "update"), attachCompany, updatePurchase);
 router.delete('/:id', protect, checkPermission("Purchases", "delete"), deletePurchase);
 
 module.exports = router;

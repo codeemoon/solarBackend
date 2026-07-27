@@ -27,6 +27,11 @@ const companySchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'inactive'],
     default: 'active'
+  },
+  subscriptionExpiry: {
+    type: Date,
+    required: true,
+    default: () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
   }
 }, {
   timestamps: true

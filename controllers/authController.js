@@ -72,11 +72,14 @@ const setupAdmin = async (req, res) => {
 
     const { companyName, name, email, password } = req.body;
 
+    const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
     // Create Company
     const company = await Company.create({
       name: companyName,
       email: email,
-      status: 'active'
+      status: 'active',
+      subscriptionExpiry: fourteenDaysFromNow
     });
 
     // Create Super Admin Role with full permissions for all modules
@@ -110,6 +113,7 @@ const setupAdmin = async (req, res) => {
       password: hashedPassword,
       companyId: company._id,
       roleId: role._id,
+      isSuperAdmin: true,
       status: "active"
     }]);
 

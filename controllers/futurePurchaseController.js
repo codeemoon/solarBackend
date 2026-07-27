@@ -42,7 +42,8 @@ const createFuturePurchase = async (req, res) => {
       igst: totalIgst,
       totalAmount,
       status: status || 'pending',
-      notes
+      notes,
+      companyId: req.user.companyId
     });
 
     await fp.save();
@@ -57,12 +58,13 @@ const createFuturePurchase = async (req, res) => {
       cgstAmount: (item.gstRate / 2) * item.quantity * item.rate / 100,
       sgstAmount: (item.gstRate / 2) * item.quantity * item.rate / 100,
       igstAmount: 0,
-      totalAmount: item.quantity * item.rate + (item.gstRate / 2) * item.quantity * item.rate / 100 + (item.gstRate / 2) * item.quantity * item.rate / 100
+      totalAmount: item.quantity * item.rate + (item.gstRate / 2) * item.quantity * item.rate / 100 + (item.gstRate / 2) * item.quantity * item.rate / 100,
+      companyId: req.user.companyId
     }));
 
     await FuturePurchaseDetail.insertMany(details);
 
-    const savedFp = await FuturePurchase.findById(fp._id).select('-__v');
+    const savedFp = await FuturePurchase.findOne({ _id: fp._id, companyId: req.user.companyId }).select('-__v');
 
     res.status(201).json({
       success: true,
@@ -91,9 +93,10 @@ const getFuturePurchases = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
 
-    const filter = search ? {
-      fpNumber: { $regex: search, $options: 'i' }
-    } : {};
+    const filter = { companyId: req.user.companyId };
+    if (search) {
+      filter.fpNumber = { $regex: search, $options: 'i' };
+    }
 
     const fps = await FuturePurchase.find(filter)
       .populate('supplierId')
@@ -120,7 +123,7 @@ const getFuturePurchases = async (req, res) => {
 
 const getFuturePurchaseById = async (req, res) => {
   try {
-    const fp = await FuturePurchase.findById(req.params.id).populate('supplierId');
+    const fp = await FuturePurchase.findOne({ _id: req.params.id, companyId: req.user.companyId }).populate('supplierId');
     
     if (!fp) {
       return res.status(404).json({
@@ -129,7 +132,7 @@ const getFuturePurchaseById = async (req, res) => {
       });
     }
 
-    const details = await FuturePurchaseDetail.find({ futurePurchaseId: req.params.id })
+    const details = await FuturePurchaseDetail.find({ futurePurchaseId: req.params.id, companyId: req.user.companyId })
       .populate('itemId')
       .populate('unitId');
 
@@ -152,8 +155,8 @@ const updateFuturePurchase = async (req, res) => {
   try {
     const { supplierId, orderDate, expectedDate, notes, status } = req.body;
     
-    const fp = await FuturePurchase.findByIdAndUpdate(
-      req.params.id,
+    const fp = await FuturePurchase.findOneAndUpdate(
+      { _id: req.params.id, companyId: req.user.companyId },
       { supplierId, orderDate, expectedDate, notes, status },
       { new: true, runValidators: true }
     ).populate('supplierId');
@@ -180,7 +183,7 @@ const updateFuturePurchase = async (req, res) => {
 
 const deleteFuturePurchase = async (req, res) => {
   try {
-    const fp = await FuturePurchase.findById(req.params.id);
+    const fp = await FuturePurchase.findOneAndDelete({ _id: req.params.id, companyId: req.user.companyId });
     
     if (!fp) {
       return res.status(404).json({
@@ -189,8 +192,7 @@ const deleteFuturePurchase = async (req, res) => {
       });
     }
     
-    await FuturePurchaseDetail.deleteMany({ futurePurchaseId: req.params.id });
-    await fp.deleteOne();
+    await FuturePurchaseDetail.deleteMany({ futurePurchaseId: req.params.id, companyId: req.user.companyId });
     
     res.status(200).json({
       success: true,

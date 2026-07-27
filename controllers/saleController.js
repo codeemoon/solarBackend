@@ -42,7 +42,8 @@ const createSale = async (req, res) => {
       igst: totalIgst,
       totalAmount,
       status: status || 'unpaid',
-      notes
+      notes,
+      companyId: req.user.companyId
     });
 
     await sale.save();
@@ -57,12 +58,13 @@ const createSale = async (req, res) => {
       cgstAmount: (item.gstRate / 2) * item.quantity * item.rate / 100,
       sgstAmount: (item.gstRate / 2) * item.quantity * item.rate / 100,
       igstAmount: 0,
-      totalAmount: item.quantity * item.rate + (item.gstRate / 2) * item.quantity * item.rate / 100 + (item.gstRate / 2) * item.quantity * item.rate / 100
+      totalAmount: item.quantity * item.rate + (item.gstRate / 2) * item.quantity * item.rate / 100 + (item.gstRate / 2) * item.quantity * item.rate / 100,
+      companyId: req.user.companyId
     }));
 
     await SaleDetail.insertMany(saleDetails);
 
-    const savedSale = await Sale.findById(sale._id).select('-__v');
+    const savedSale = await Sale.findOne({ _id: sale._id, companyId: req.user.companyId }).select('-__v');
 
     res.status(201).json({
       success: true,
@@ -91,9 +93,10 @@ const getSales = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
 
-    const filter = search ? {
-      saleNumber: { $regex: search, $options: 'i' }
-    } : {};
+    const filter = { companyId: req.user.companyId };
+    if (search) {
+      filter.saleNumber = { $regex: search, $options: 'i' };
+    }
 
     const sales = await Sale.find(filter)
       .populate('customerId')
@@ -120,7 +123,7 @@ const getSales = async (req, res) => {
 
 const getSaleById = async (req, res) => {
   try {
-    const sale = await Sale.findById(req.params.id).populate('customerId');
+    const sale = await Sale.findOne({ _id: req.params.id, companyId: req.user.companyId }).populate('customerId');
     
     if (!sale) {
       return res.status(404).json({
@@ -129,7 +132,7 @@ const getSaleById = async (req, res) => {
       });
     }
 
-    const details = await SaleDetail.find({ saleId: req.params.id })
+    const details = await SaleDetail.find({ saleId: req.params.id, companyId: req.user.companyId })
       .populate('itemId')
       .populate('unitId');
 
@@ -152,8 +155,8 @@ const updateSale = async (req, res) => {
   try {
     const { customerId, date, dueDate, notes, status } = req.body;
     
-    const sale = await Sale.findByIdAndUpdate(
-      req.params.id,
+    const sale = await Sale.findOneAndUpdate(
+      { _id: req.params.id, companyId: req.user.companyId },
       { customerId, date, dueDate, notes, status },
       { new: true, runValidators: true }
     ).populate('customerId');
@@ -180,7 +183,7 @@ const updateSale = async (req, res) => {
 
 const deleteSale = async (req, res) => {
   try {
-    const sale = await Sale.findById(req.params.id);
+    const sale = await Sale.findOneAndDelete({ _id: req.params.id, companyId: req.user.companyId });
     
     if (!sale) {
       return res.status(404).json({
@@ -189,8 +192,7 @@ const deleteSale = async (req, res) => {
       });
     }
     
-    await SaleDetail.deleteMany({ saleId: req.params.id });
-    await sale.deleteOne();
+    await SaleDetail.deleteMany({ saleId: req.params.id, companyId: req.user.companyId });
     
     res.status(200).json({
       success: true,

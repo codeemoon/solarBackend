@@ -42,6 +42,10 @@ const futureSaleDetailSchema = new mongoose.Schema({
   totalAmount: {
     type: Number,
     default: 0
+  },
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company'
   }
 }, {
   timestamps: true

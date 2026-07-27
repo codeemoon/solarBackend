@@ -13,12 +13,15 @@ const createReceipt = async (req, res) => {
       bankId,
       referenceNo,
       saleId,
-      notes
+      notes,
+      companyId: req.user.companyId
     });
 
     await receipt.save();
 
-    const savedReceipt = await Receipt.findById(receipt._id).populate('customerId bankId saleId').select('-__v');
+    const savedReceipt = await Receipt.findOne({ _id: receipt._id, companyId: req.user.companyId })
+      .populate('customerId bankId saleId')
+      .select('-__v');
 
     res.status(201).json({
       success: true,
@@ -46,12 +49,13 @@ const getReceipts = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
 
-    const filter = search ? {
-      $or: [
+    const filter = { companyId: req.user.companyId };
+    if (search) {
+      filter.$or = [
         { voucherNumber: { $regex: search, $options: 'i' } },
         { referenceNo: { $regex: search, $options: 'i' } }
-      ]
-    } : {};
+      ];
+    }
 
     const receipts = await Receipt.find(filter)
       .populate('customerId bankId saleId')
@@ -78,7 +82,7 @@ const getReceipts = async (req, res) => {
 
 const getReceiptById = async (req, res) => {
   try {
-    const receipt = await Receipt.findById(req.params.id)
+    const receipt = await Receipt.findOne({ _id: req.params.id, companyId: req.user.companyId })
       .populate('customerId bankId saleId');
     
     if (!receipt) {
@@ -104,8 +108,8 @@ const updateReceipt = async (req, res) => {
   try {
     const { customerId, amount, date, mode, bankId, referenceNo, saleId, notes } = req.body;
     
-    const receipt = await Receipt.findByIdAndUpdate(
-      req.params.id,
+    const receipt = await Receipt.findOneAndUpdate(
+      { _id: req.params.id, companyId: req.user.companyId },
       { customerId, amount, date, mode, bankId, referenceNo, saleId, notes },
       { new: true, runValidators: true }
     ).populate('customerId bankId saleId');
@@ -138,7 +142,7 @@ const updateReceipt = async (req, res) => {
 
 const deleteReceipt = async (req, res) => {
   try {
-    const receipt = await Receipt.findById(req.params.id);
+    const receipt = await Receipt.findOneAndDelete({ _id: req.params.id, companyId: req.user.companyId });
     
     if (!receipt) {
       return res.status(404).json({
@@ -146,8 +150,6 @@ const deleteReceipt = async (req, res) => {
         message: 'Receipt not found'
       });
     }
-    
-    await receipt.deleteOne();
     
     res.status(200).json({
       success: true,

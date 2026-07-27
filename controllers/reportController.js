@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Purchase = require('../models/Purchase');
 const Sale = require('../models/Sale');
 const FuturePurchase = require('../models/FuturePurchase');
@@ -14,7 +15,7 @@ const purchaseRegister = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const filter = {};
+    const filter = { companyId: req.user.companyId };
     if (startDate || endDate) {
       filter.date = {};
       if (startDate) filter.date.$gte = new Date(startDate);
@@ -41,7 +42,7 @@ const salesRegister = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const filter = {};
+    const filter = { companyId: req.user.companyId };
     if (startDate || endDate) {
       filter.date = {};
       if (startDate) filter.date.$gte = new Date(startDate);
@@ -68,7 +69,7 @@ const futurePurchaseReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const filter = {};
+    const filter = { companyId: req.user.companyId };
     if (startDate || endDate) {
       filter.orderDate = {};
       if (startDate) filter.orderDate.$gte = new Date(startDate);
@@ -95,7 +96,7 @@ const futureSalesReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const filter = {};
+    const filter = { companyId: req.user.companyId };
     if (startDate || endDate) {
       filter.orderDate = {};
       if (startDate) filter.orderDate.$gte = new Date(startDate);
@@ -122,7 +123,7 @@ const paymentRegister = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const filter = {};
+    const filter = { companyId: req.user.companyId };
     if (startDate || endDate) {
       filter.date = {};
       if (startDate) filter.date.$gte = new Date(startDate);
@@ -150,7 +151,7 @@ const receiptRegister = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const filter = {};
+    const filter = { companyId: req.user.companyId };
     if (startDate || endDate) {
       filter.date = {};
       if (startDate) filter.date.$gte = new Date(startDate);
@@ -193,10 +194,10 @@ const supplierLedger = async (req, res) => {
     }
 
     const [purchases, payments] = await Promise.all([
-      Purchase.find({ supplierId, ...dateFilter })
+      Purchase.find({ supplierId, companyId: req.user.companyId, ...dateFilter })
         .populate('supplierId')
         .sort({ date: 1 }),
-      Payment.find({ supplierId, ...dateFilter })
+      Payment.find({ supplierId, companyId: req.user.companyId, ...dateFilter })
         .populate('supplierId')
         .populate('bankId')
         .sort({ date: 1 })
@@ -271,10 +272,10 @@ const customerLedger = async (req, res) => {
     }
 
     const [sales, receipts] = await Promise.all([
-      Sale.find({ customerId, ...dateFilter })
+      Sale.find({ customerId, companyId: req.user.companyId, ...dateFilter })
         .populate('customerId')
         .sort({ date: 1 }),
-      Receipt.find({ customerId, ...dateFilter })
+      Receipt.find({ customerId, companyId: req.user.companyId, ...dateFilter })
         .populate('customerId')
         .populate('bankId')
         .sort({ date: 1 })
@@ -332,21 +333,29 @@ const customerLedger = async (req, res) => {
 
 const outstandingPayable = async (req, res) => {
   try {
+    const tenantCompanyId = new mongoose.Types.ObjectId(req.user.companyId);
+
     const [suppliers, purchasesAgg, paymentsAgg] = await Promise.all([
-      Supplier.find().select('name'),
+      Supplier.find({ companyId: req.user.companyId }).select('name'),
       Purchase.aggregate([
+        { $match: { companyId: tenantCompanyId } },
         { $group: { _id: '$supplierId', totalPurchased: { $sum: '$totalAmount' } } }
       ]),
       Payment.aggregate([
+        { $match: { companyId: tenantCompanyId } },
         { $group: { _id: '$supplierId', totalPaid: { $sum: '$amount' } } }
       ])
     ]);
 
     const purchaseMap = {};
-    purchasesAgg.forEach(p => { purchaseMap[p._id.toString()] = p.totalPurchased; });
+    purchasesAgg.forEach(p => { 
+      if (p._id) purchaseMap[p._id.toString()] = p.totalPurchased; 
+    });
 
     const paymentMap = {};
-    paymentsAgg.forEach(p => { paymentMap[p._id.toString()] = p.totalPaid; });
+    paymentsAgg.forEach(p => { 
+      if (p._id) paymentMap[p._id.toString()] = p.totalPaid; 
+    });
 
     const result = suppliers
       .map(s => {
@@ -377,21 +386,29 @@ const outstandingPayable = async (req, res) => {
 
 const outstandingReceivable = async (req, res) => {
   try {
+    const tenantCompanyId = new mongoose.Types.ObjectId(req.user.companyId);
+
     const [customers, salesAgg, receiptsAgg] = await Promise.all([
-      Customer.find().select('name'),
+      Customer.find({ companyId: req.user.companyId }).select('name'),
       Sale.aggregate([
+        { $match: { companyId: tenantCompanyId } },
         { $group: { _id: '$customerId', totalSold: { $sum: '$totalAmount' } } }
       ]),
       Receipt.aggregate([
+        { $match: { companyId: tenantCompanyId } },
         { $group: { _id: '$customerId', totalReceived: { $sum: '$amount' } } }
       ])
     ]);
 
     const salesMap = {};
-    salesAgg.forEach(s => { salesMap[s._id.toString()] = s.totalSold; });
+    salesAgg.forEach(s => { 
+      if (s._id) salesMap[s._id.toString()] = s.totalSold; 
+    });
 
     const receiptMap = {};
-    receiptsAgg.forEach(r => { receiptMap[r._id.toString()] = r.totalReceived; });
+    receiptsAgg.forEach(r => { 
+      if (r._id) receiptMap[r._id.toString()] = r.totalReceived; 
+    });
 
     const result = customers
       .map(c => {
@@ -424,7 +441,7 @@ const productWiseReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const dateFilter = {};
+    const dateFilter = { companyId: req.user.companyId };
     if (startDate || endDate) {
       dateFilter.date = {};
       if (startDate) dateFilter.date.$gte = new Date(startDate);
@@ -434,7 +451,7 @@ const productWiseReport = async (req, res) => {
     const sales = await Sale.find(dateFilter).select('_id').lean();
     const saleIds = sales.map(s => s._id);
 
-    const saleDetails = await SaleDetail.find({ saleId: { $in: saleIds } })
+    const saleDetails = await SaleDetail.find({ companyId: req.user.companyId, saleId: { $in: saleIds } })
       .populate({
         path: 'itemId',
         select: 'name',
@@ -487,7 +504,7 @@ const brandWiseReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const dateFilter = {};
+    const dateFilter = { companyId: req.user.companyId };
     if (startDate || endDate) {
       dateFilter.date = {};
       if (startDate) dateFilter.date.$gte = new Date(startDate);
@@ -497,7 +514,7 @@ const brandWiseReport = async (req, res) => {
     const sales = await Sale.find(dateFilter).select('_id').lean();
     const saleIds = sales.map(s => s._id);
 
-    const saleDetails = await SaleDetail.find({ saleId: { $in: saleIds } })
+    const saleDetails = await SaleDetail.find({ companyId: req.user.companyId, saleId: { $in: saleIds } })
       .populate({
         path: 'itemId',
         select: 'name',
@@ -548,7 +565,9 @@ const gstSummary = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const dateFilter = {};
+    const tenantCompanyId = new mongoose.Types.ObjectId(req.user.companyId);
+
+    const dateFilter = { companyId: tenantCompanyId };
     if (startDate || endDate) {
       dateFilter.date = {};
       if (startDate) dateFilter.date.$gte = new Date(startDate);
@@ -591,7 +610,7 @@ const profitMarginReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const dateFilter = {};
+    const dateFilter = { companyId: req.user.companyId };
     if (startDate || endDate) {
       dateFilter.date = {};
       if (startDate) dateFilter.date.$gte = new Date(startDate);
@@ -601,7 +620,7 @@ const profitMarginReport = async (req, res) => {
     const sales = await Sale.find(dateFilter).select('_id').lean();
     const saleIds = sales.map(s => s._id);
 
-    const saleDetails = await SaleDetail.find({ saleId: { $in: saleIds } })
+    const saleDetails = await SaleDetail.find({ companyId: req.user.companyId, saleId: { $in: saleIds } })
       .populate({
         path: 'itemId',
         select: 'name purchasePrice'

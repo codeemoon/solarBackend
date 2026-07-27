@@ -45,7 +45,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const receiptRoutes = require('./routes/receiptRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const reportRoutes = require('./routes/reportRoutes');
-
+const superAdminRoutes = require('./routes/superAdminRoutes');
 
 const app = express();
 
@@ -88,6 +88,7 @@ app.use('/v1/payments', paymentRoutes);
 app.use('/v1/receipts', receiptRoutes);
 app.use('/v1/dashboard', dashboardRoutes);
 app.use('/v1/reports', reportRoutes);
+app.use('/v1/super-admin', superAdminRoutes);
 
 // Global error handler — always include CORS headers so browser can read the error
 app.use((err, req, res, next) => {

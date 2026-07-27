@@ -13,12 +13,15 @@ const createPayment = async (req, res) => {
       bankId,
       referenceNo,
       purchaseId,
-      notes
+      notes,
+      companyId: req.user.companyId
     });
 
     await payment.save();
 
-    const savedPayment = await Payment.findById(payment._id).populate('supplierId bankId purchaseId').select('-__v');
+    const savedPayment = await Payment.findOne({ _id: payment._id, companyId: req.user.companyId })
+      .populate('supplierId bankId purchaseId')
+      .select('-__v');
 
     res.status(201).json({
       success: true,
@@ -46,12 +49,13 @@ const getPayments = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
 
-    const filter = search ? {
-      $or: [
+    const filter = { companyId: req.user.companyId };
+    if (search) {
+      filter.$or = [
         { voucherNumber: { $regex: search, $options: 'i' } },
         { referenceNo: { $regex: search, $options: 'i' } }
-      ]
-    } : {};
+      ];
+    }
 
     const payments = await Payment.find(filter)
       .populate('supplierId bankId purchaseId')
@@ -78,7 +82,7 @@ const getPayments = async (req, res) => {
 
 const getPaymentById = async (req, res) => {
   try {
-    const payment = await Payment.findById(req.params.id)
+    const payment = await Payment.findOne({ _id: req.params.id, companyId: req.user.companyId })
       .populate('supplierId bankId purchaseId');
     
     if (!payment) {
@@ -104,8 +108,8 @@ const updatePayment = async (req, res) => {
   try {
     const { supplierId, amount, date, mode, bankId, referenceNo, purchaseId, notes } = req.body;
     
-    const payment = await Payment.findByIdAndUpdate(
-      req.params.id,
+    const payment = await Payment.findOneAndUpdate(
+      { _id: req.params.id, companyId: req.user.companyId },
       { supplierId, amount, date, mode, bankId, referenceNo, purchaseId, notes },
       { new: true, runValidators: true }
     ).populate('supplierId bankId purchaseId');
@@ -138,7 +142,7 @@ const updatePayment = async (req, res) => {
 
 const deletePayment = async (req, res) => {
   try {
-    const payment = await Payment.findById(req.params.id);
+    const payment = await Payment.findOneAndDelete({ _id: req.params.id, companyId: req.user.companyId });
     
     if (!payment) {
       return res.status(404).json({
@@ -146,8 +150,6 @@ const deletePayment = async (req, res) => {
         message: 'Payment not found'
       });
     }
-    
-    await payment.deleteOne();
     
     res.status(200).json({
       success: true,

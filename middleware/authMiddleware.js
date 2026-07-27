@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Company = require('../models/Company');
 
 const protect = async (req, res, next) => {
   try {
@@ -24,6 +25,24 @@ const protect = async (req, res, next) => {
         success: false,
         message: 'User not found'
       });
+    }
+
+    if (!user.isSuperAdmin && user.companyId) {
+      const company = await Company.findById(user.companyId);
+      if (company) {
+        if (company.status === 'inactive') {
+          return res.status(403).json({
+            success: false,
+            message: 'Your company account is suspended. Contact admin.'
+          });
+        }
+        if (company.subscriptionExpiry && new Date() > new Date(company.subscriptionExpiry)) {
+          return res.status(403).json({
+            success: false,
+            message: 'Your subscription has expired. Please contact admin to renew.'
+          });
+        }
+      }
     }
 
     req.user = user;
