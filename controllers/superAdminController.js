@@ -7,8 +7,8 @@ const getAdminDashboard = async (req, res) => {
     const activeCompanies = await Company.countDocuments({ status: 'active' });
     const now = new Date();
     const expiredSubscriptions = await Company.countDocuments({ subscriptionExpiry: { $lt: now } });
-    const totalUsers = await User.countDocuments({ isSuperAdmin: false });
-    const activeUsers = await User.countDocuments({ isSuperAdmin: false, status: 'active' });
+    const totalUsers = await User.countDocuments({ isSuperAdmin: { $ne: true } });
+    const activeUsers = await User.countDocuments({ isSuperAdmin: { $ne: true }, status: { $ne: 'inactive' } });
 
     res.status(200).json({
       success: true,
