@@ -4,6 +4,9 @@ const User = require('../models/User');
 const getAdminDashboard = async (req, res) => {
   try {
     const totalCompanies = await Company.countDocuments({});
+    const activeCompanies = await Company.countDocuments({ status: 'active' });
+    const now = new Date();
+    const expiredSubscriptions = await Company.countDocuments({ subscriptionExpiry: { $lt: now } });
     const totalUsers = await User.countDocuments({ isSuperAdmin: false });
     const activeUsers = await User.countDocuments({ isSuperAdmin: false, status: 'active' });
 
@@ -11,6 +14,8 @@ const getAdminDashboard = async (req, res) => {
       success: true,
       data: {
         totalCompanies,
+        activeCompanies,
+        expiredSubscriptions,
         totalUsers,
         activeUsers
       }
